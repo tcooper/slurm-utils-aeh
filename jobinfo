@@ -129,6 +129,14 @@ def f_state(x, meta):
     if deps != '':
         deps = " (%s)" % deps
     return ','.join(states) + reason + deps
+def f_nodes(x, meta):
+    nodes = set(x.split("c"))
+    if len(nodes) >= 1 and len(nodes - set(["None assigned"])) >=1:
+        return 'c'.join(nodes)
+    reqnodes = meta.reqnodes
+    if len(reqnodes) >= 1:
+        return reqnodes + " (Requested)"
+    return "--"
 
 def whoami():
     import pwd
@@ -138,9 +146,13 @@ Field = NT('Field', 'name ctor combinator shown prefer_live formatter desc')
 FIELDS = [
         Field("JobName",             str,        keep_first,   True,  False, f_str,     "Name"),
         Field("User",                str,        keep_first,   True,  False, f_str,     "User"),
+        Field("Account",             str,        keep_first,   True,  False, f_str,     "Account"),
         Field("Partition",           str,        keep_first,   True,  False, f_str,     "Partition"),
-        Field("NodeList",            str,        keep_first,   True,  False, f_str,     "Nodes"),
-        Field("ncpus",               int,        max,          True,  False, f_str,     "Cores"),
+        Field("QOS",                 str,        keep_first,   True,  False, f_str,     "QOS"),
+        Field("Priority",            int,        keep_first,   True,  False, f_str,     "Priority"),
+        Field("NNodes",              int,        max,          True,  False, f_str,     "Node Count"),
+        Field("NodeList",            str,        keep_first,   True,  False, f_nodes,   "NodeList"),
+        Field("ncpus",               int,        max,          True,  False, f_str,     "CPUs"),
         Field("State",               str,        append,       True,  False, f_state,   "State"),
         Field("Submit",              str,        keep_first,   True,  False, f_str,     "Submit"),
         Field("start",               date_str,   min,          True,  False, f_date,    "Start"),
@@ -167,7 +179,7 @@ FIELD_CTORS = [f.ctor for f in FIELDS]
 FIELD_COMB = [f.combinator for f in FIELDS]
 FORMAT_STR = "--format=%s" % (",".join(FIELD_NAMES))
 FORMAT_LIVE_STR = "--format=%s" % (",".join(FIELD_NAMES_LIVE))
-Meta = NT('Meta', FIELD_NAMES + ['dependencies', 'reason'])
+Meta = NT('Meta', FIELD_NAMES + ['reqnodes', 'dependencies', 'reason'])
 
 def combine(xs):
     r = xs[0]
@@ -203,7 +215,7 @@ def get_live_values(jobid):
 
 def main(jobid):
     y = combine(get_values(jobid))
-    meta = Meta._make(y + ['', ''])
+    meta = Meta._make(y + ['', '', ''])
     ys = [y]
     if meta.State == "RUNNING" and (os.getuid() == 0 or meta.User == whoami()):
         # get more info from sstat
@@ -214,11 +226,14 @@ def main(jobid):
         info = subprocess.Popen(['squeue', '--format=%E;%R', '--noheader', '-a', '-j', jobid], stdout=subprocess.PIPE)
         deps, reason = info.stdout.readline().strip().split(";")
         dependencies = deps
+        info = subprocess.Popen(['squeue', '--Format=reqnodes', '--noheader', '-a', '-j', jobid], stdout=subprocess.PIPE)
+        reqnodes = info.stdout.readline().strip()
     else:
         dependencies = ""
         reason = ""
+        reqnodes = ""
     y = combine(ys)
-    meta = Meta._make(y + [dependencies, reason])
+    meta = Meta._make(y + [reqnodes, dependencies, reason])
 
     for i,(name,parse,comb,show,prefer_live,format,desc) in enumerate(FIELDS):
         val = y[i]

@@ -148,6 +148,7 @@ FIELDS = [
         Field("User",                str,        keep_first,   True,  False, f_str,     "User"),
         Field("Account",             str,        keep_first,   True,  False, f_str,     "Account"),
         Field("Partition",           str,        keep_first,   True,  False, f_str,     "Partition"),
+        Field("Reservation",         str,        keep_first,   True,  False, f_str,     "Reservation"),
         Field("QOS",                 str,        keep_first,   True,  False, f_str,     "QOS"),
         Field("Priority",            int,        keep_first,   True,  False, f_str,     "Priority"),
         Field("NNodes",              int,        max,          True,  False, f_str,     "Node Count"),
